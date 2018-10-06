@@ -1,0 +1,116 @@
+---
+title: "p8105_hw3_yh3094"
+author: "Yun He"
+date: "October 5, 2018"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+# Problem 1
+
+## Import the BRFSS data
+
+```{r brfss_data_import}
+devtools::install_github("p8105/p8105.datasets")
+library(p8105.datasets)
+data("brfss_smart2010")
+```
+
+## Clean the BRFSS data
+
+```{r brfss_data_clean}
+brfss_data = brfss_smart2010 %>% 
+  janitor::clean_names() %>% 
+  filter(topic == "Overall Health") %>% 
+  mutate(response = as.factor(response))
+```
+
+## Pick out the states observed at 7 locations in 2002
+
+```{r state_7_location}
+brfss_data %>% 
+  filter(year == 2002) %>% 
+  group_by(locationabbr) %>% 
+  summarize(n_location = n_distinct(locationdesc)) %>%
+  filter(n_location == 7)
+```
+
+In 2002, CT, FL and NC were observed at 7 locations.
+
+## Make a “spaghetti plot” 
+
+The code chunk below makes a “spaghetti plot” which shows the number of observations in each state from 2002 to 2010.
+
+```{r spaghetti_plot}
+brfss_data %>% 
+  group_by(year, locationabbr) %>% 
+  summarize(n_observation = sum(sample_size)) %>% 
+  ggplot(aes(x = year, y = n_observation, color = locationabbr)) +
+  geom_line() +
+  labs(title = "The spaghetti plot")
+```
+
+The number of observations didn't change a lot over the years in most states, although some states, like FL, MA and WA, have the number of observations changing from thousands to ten thousands. 
+
+## Make a table
+
+The code chunk below makes a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
+
+```{r excellent_table}
+brfss_data %>% 
+  filter(locationabbr == "NY") %>% 
+  filter(year == 2002 | year == 2006 | year == 2010) %>% 
+  filter(response == "Excellent") %>% 
+  group_by(year) %>% 
+  summarise(
+    mean_excellent = round(mean(data_value, na.rm = TRUE), digits = 1), 
+    sd_excellent = round(sd(data_value, na.rm = TRUE), digits = 1)) %>%
+  knitr::kable(caption = "The proportion of “Excellent” responses across locations in NY State in 2002, 2006, and 2010")
+```
+
+The mean of the proportion of “Excellent” responses across locations in NY State decreased in 2006 and then increased a little bit in 2010. The standard deviation of the proportion of “Excellent” responses across locations in NY State showed a decreasing trend from 2002 to 2010.
+
+## Compute the average proportion in each response category for each year and state
+
+```{r response_average}
+brfss_data %>% 
+  group_by(year, locationabbr, response) %>% 
+  summarize(mean_response_proportion = round(mean(data_value, na.rm = TRUE), digits = 1)) 
+```
+
+## Make a five-panel plot
+
+The code chunk below makes a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
+
+```{r five_panel_plot}
+brfss_data %>% 
+  group_by(year, locationabbr, response) %>% 
+  summarize(mean_response_proportion = round(mean(data_value, na.rm = TRUE), digits = 1)) %>% 
+  ggplot(aes(x = year, y = mean_response_proportion, color = locationabbr)) +
+  facet_grid(~response) +
+  geom_line() +
+  labs(title = "The five-panel plot")
+```
+
+Almost in all states, the average proportion of “Very good” responses is the largest compared with other response categories, and the average proportion of “Poor” responses is the smallest. The average proportion of each response category changed over time with no regular pattern. 
+
+# Problem 2
+
+## 
+
+```{r}
+
+```
+
