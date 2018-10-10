@@ -8,13 +8,6 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-
-knitr::opts_chunk$set(
-  fig.width = 6,
-  fig.asp = .6,
-  out.width = "90%"
-)
-
 theme_set(theme_bw() + theme(legend.position = "bottom"))
 ```
 
@@ -34,7 +27,8 @@ data("brfss_smart2010")
 brfss_data = brfss_smart2010 %>% 
   janitor::clean_names() %>% 
   filter(topic == "Overall Health") %>% 
-  mutate(response = as.factor(response))
+  filter(response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
+  mutate(response = factor(response, levels = c("Excellent", "Very good", "Good", "Fair", "Poor")))
 ```
 
 ## Pick out the states observed at 7 locations in 2002
@@ -70,14 +64,14 @@ The code chunk below makes a table showing, for the years 2002, 2006, and 2010, 
 
 ```{r excellent_table}
 brfss_data %>% 
-  filter(locationabbr == "NY") %>% 
-  filter(year == 2002 | year == 2006 | year == 2010) %>% 
-  filter(response == "Excellent") %>% 
+  filter(
+    locationabbr == "NY", year %in% c("2002", "2006", "2010"), response == "Excellent"
+  ) %>%
   group_by(year) %>% 
   summarise(
-    mean_excellent = round(mean(data_value, na.rm = TRUE), digits = 1), 
-    sd_excellent = round(sd(data_value, na.rm = TRUE), digits = 1)) %>%
-  knitr::kable()
+    mean_excellent = mean(data_value, na.rm = TRUE), 
+    sd_excellent = sd(data_value, na.rm = TRUE)) %>%
+  knitr::kable(digits = 1)
 ```
 
 The mean of the proportion of “Excellent” responses across locations in NY State decreased in 2006 and then increased a little bit in 2010. The standard deviation of the proportion of “Excellent” responses across locations in NY State showed a decreasing trend from 2002 to 2010.
@@ -97,14 +91,15 @@ The code chunk below makes a five-panel plot that shows, for each response categ
 ```{r five_panel_plot}
 brfss_data %>% 
   group_by(year, locationabbr, response) %>% 
-  summarize(mean_response_proportion = round(mean(data_value, na.rm = TRUE), digits = 1)) %>% 
-  ggplot(aes(x = year, y = mean_response_proportion, color = locationabbr)) +
+  summarize(mean_response_proportion = mean(data_value, na.rm = TRUE)) %>% 
+  ggplot(aes(x = factor(year), y = mean_response_proportion)) +
   facet_grid(~response) +
-  geom_line() +
+  geom_violin(aes(fill = factor(year))) +
+  stat_summary(fun.y = median, geom = "point", size = 2) +
   labs(title = "The five-panel plot")
 ```
 
-Almost in all states, the average proportion of “Very good” responses is the largest compared with other response categories, and the average proportion of “Poor” responses is the smallest. The average proportion of each response category changed over time with no regular pattern. 
+The state-level average proportion of “Very good” responses remained highest compared with that of other response categories over time. And the state-level average proportion of “Poor” responses remained lowest over time. For all response categories, these state-level averages didn't change much over time.
 
 # Problem 2
 
@@ -113,6 +108,19 @@ Almost in all states, the average proportion of “Very good” responses is the
 ```{r instacart_data_import}
 data("instacart")
 instacart = janitor::clean_names(instacart) ## clean variable names
+skimr::skim(instacart)
+```
+
+write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations.
+
+The Instacart data has `r nrow(instacart)` observations and `r ncol(instacart)` variables. Variables for `aisle`, `department`, `eval_set` and `product_name` are class `character` and other variables are class `integer`. The dataset contains products of 39,123 different names bought from 134 different aisles within 21 departments. `r round(sum(instacart$reordered == 1)/nrow(instacart), digits = 2)` of all items ordered have been ordered by the user in the past. Among those items which have been ordered before, `r (instacart %>% filter(reordered == 1) %>% count(product_name) %>% top_n(1))[[1]]` is the most popular. Most orders were placed at $14\pm4.2$ hours of the day. 
+
+The distribution of orders placed at which day of the week are shown below. 
+
+```{r order_placed_day}
+instacart %>% 
+  count(order_dow) %>% 
+  ggplot(aes(x = factor(order_dow), y = n)) + geom_bar(stat = "identity")
 ```
 
 ## Calculate the number of aisles and find out the most frequent
@@ -121,8 +129,7 @@ instacart = janitor::clean_names(instacart) ## clean variable names
 n_distinct(instacart$aisle) ## number of aisles
 instacart %>% 
   count(aisle) %>% 
-  mutate(aisle_ranking = min_rank(desc(n))) %>% 
-  filter(aisle_ranking == 1)
+  top_n(1)
 ```
 
 There are 134 aisles. Fresh vegetables is the aisle which the most items ordered from.
@@ -131,22 +138,88 @@ There are 134 aisles. Fresh vegetables is the aisle which the most items ordered
 
 The code chunk below makes a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
 
+Solution a
+
 ```{r aisle_plot}
-instacart %>% 
-  group_by(department, aisle) %>% 
-  summarise(n_item = sum(order_number)) %>% 
-  ggplot(aes(x = aisle, y = n_item, color = aisle)) +
-  geom_point() +
-  facet_grid(~department)
+instacart %>%
+  count(aisle) %>%
+  pull(n) %>% 
+  quantile
+
+aisle_p1 = 
+  instacart %>%
+  count(aisle) %>%
+  filter(n %in% quantile(n, 0):quantile(n, 0.25)) %>% 
+  ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(x = "aisle", y = "number of items") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+aisle_p2 = 
+  instacart %>%
+  count(aisle) %>% 
+  filter(n %in% 1464:4723) %>% 
+  ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(x = "aisle", y = "number of items") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+aisle_p3 =
+  instacart %>%
+  count(aisle) %>%
+  filter(n %in% quantile(n, 0.5):quantile(n, 0.75)) %>% 
+  ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(x = "aisle", y = "number of items") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+aisle_p4 =
+  instacart %>%
+  count(aisle) %>%
+  filter(n %in% quantile(n, 0.75):quantile(n, 1)) %>% 
+  ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(x = "aisle", y = "number of items") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+library(patchwork) 
+aisle_p1/aisle_p2
+aisle_p3/aisle_p4
 ```
+
+Solution b
+
+```{r}
+instacart %>% 
+  count(aisle) %>% 
+  ggplot(aes(x = n)) +
+  geom_histogram() +
+  labs(x = "Number of items", y = "Number of aisles")
+
+instacart %>% 
+  count(aisle) %>% 
+  top_n(3)
+```
+
+The number of items ordered in most aisles are below 25,000, although in some aisles, like "fresh fruits" and "fresh vegetables", the number of items ordered are quite large, more than 150,000.
 
 ## Make a table 
 
 The code chunk below makes a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
 
 ```{r popular_aisle_table}
-  
+instacart %>% 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
+  group_by(aisle) %>% 
+  count(product_name) %>% 
+  top_n(1) %>% 
+  rename("the most popular item" = "product_name") %>% 
+  select(-n) %>% 
+  knitr::kable() 
 ```
+
+The most popular items aisle “baking ingredients”, “dog food care”, and “packaged vegetables fruits” are Light Brown Sugar, Snack Sticks Chicken & Rice Recipe Dog Treats and Organic Baby Spinach, respectively. 
 
 ## Make a table 
 
@@ -161,6 +234,7 @@ instacart %>%
   knitr::kable()
 ```
 
+On most days of a week, the mean hour at which Pink Lady Apples is ordered is earlier than that and at which Coffee Ice Cream is ordered. 
 
 # Problem 3
 
