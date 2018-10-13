@@ -8,6 +8,7 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(patchwork)
 theme_set(theme_bw() + theme(legend.position = "bottom"))
 ```
 
@@ -183,14 +184,12 @@ aisle_p4 =
   labs(x = "aisle", y = "number of items") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-library(patchwork) 
-aisle_p1/aisle_p2
-aisle_p3/aisle_p4
+aisle_p1/aisle_p2/aisle_p3/aisle_p4
 ```
 
 Solution b
 
-```{r}
+```{r aisle_plot_2}
 instacart %>% 
   count(aisle) %>% 
   ggplot(aes(x = n)) +
@@ -243,5 +242,64 @@ On most days of a week, the mean hour at which Pink Lady Apples is ordered is ea
 ```{r ny_noaa_data_import}
 data("ny_noaa")
 ny_noaa = janitor::clean_names(ny_noaa) ## clean variable names
+skimr::skim(ny_noaa)
 ```
+
+Write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue.
+
+The NY NOAA data has `r nrow(ny_noaa)` observations and `r ncol(ny_noaa)` variables. Variables for `id`, `tmax` and `tmin` are class `character`. Variables for `prcp`, `snow` and `snwd` are class `integer`. Variable for `date` is class `Date`. 
+
+## Clean the NY NOAA data
+
+```{r ny_noaa_data_clean}
+ny_noaa = ny_noaa %>% 
+  separate(col = date, into = c("year", "month", "day"), sep = "-")
+ny_noaa$tmax = as.numeric(ny_noaa$tmax)
+ny_noaa$tmin = as.numeric(ny_noaa$tmin)
+```
+
+## The most commonly observed value for snowfall
+
+```{r snowfall}
+ny_noaa %>% 
+  count(snow) %>% 
+  top_n(1)
+```
+
+0 is the most commonly observed value for snowfall. Because for most of the time between 1981-01-01 and 2010-12-31, it didn't snow in NY state.
+
+## Make a two-panel plot
+
+The code chunk below makes a two-panel plot showing the average max temperature in January and in July in each station across years.
+
+```{r tmax_jan_july}
+ny_noaa %>% 
+  filter(month %in% c("01", "07")) %>% 
+  group_by(month, id, year) %>%
+  summarize(tmax_mean = mean(tmax, na.rm = T)) %>%
+  ggplot(aes(x = year, y = tmax_mean, fill = year)) +
+  geom_violin() +
+  facet_grid(~month)
+```
+
+
+
+## Make a two-panel plot
+
+The code chunk below makes a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year
+
+```{r tmax_tmin_snowfall}
+tmax_tmin = ny_noaa %>% 
+  ggplot(aes(x = tmax, y = tmin)) +
+  geom_hex()
+
+snowfall = ny_noaa %>% 
+  filter(snow > 0 & snow < 100) %>% 
+  group_by(year) %>% 
+  ggplot(aes(x = year, y = snow)) +
+  geom_boxplot()
+
+tmax_tmin + snowfall
+```
+
 
