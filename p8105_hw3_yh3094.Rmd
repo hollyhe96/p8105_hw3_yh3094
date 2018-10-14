@@ -46,18 +46,18 @@ In 2002, CT, FL and NC were observed at 7 locations.
 
 ## Make a “spaghetti plot” 
 
-The code chunk below makes a “spaghetti plot” which shows the number of observations in each state from 2002 to 2010.
+The code chunk below makes a “spaghetti plot” that shows the number of locations in each state from 2002 to 2010.
 
 ```{r spaghetti_plot}
 brfss_data %>% 
   group_by(year, locationabbr) %>% 
-  summarize(n_observation = sum(sample_size)) %>% 
-  ggplot(aes(x = year, y = n_observation, color = locationabbr)) +
+  summarize(n_location = n_distinct(locationdesc)) %>% 
+  ggplot(aes(x = year, y = n_location, color = locationabbr)) +
   geom_line() +
   labs(title = "The spaghetti plot")
 ```
 
-The number of observations didn't change a lot over the years in most states, although some states, like FL, MA and WA, have the number of observations changing from thousands to ten thousands. 
+From 2002 to 2010, the number of locations in most states was fewer than 10. In FL, the number of locations had the biggest change over time. Before 2007, the number of locations in FL was fewer than 10 each year, while in 2007, the number of locations in FL was up to 44. Then, the number of locations in FL decreased to fewer than 10 again. However, in 2010, the number of locations in FL increased to 41. 
 
 ## Make a table
 
@@ -96,8 +96,8 @@ brfss_data %>%
   ggplot(aes(x = factor(year), y = mean_response_proportion)) +
   facet_grid(~response) +
   geom_violin(aes(fill = factor(year))) +
-  stat_summary(fun.y = median, geom = "point", size = 2) +
-  labs(title = "The five-panel plot")
+  stat_summary(fun.y = median, geom = "point") +
+  labs(x = "Year", y = "State-level averages", title = "The five-panel plot")
 ```
 
 The state-level average proportion of “Very good” responses remained highest compared with that of other response categories over time. And the state-level average proportion of “Poor” responses remained lowest over time. For all response categories, these state-level averages didn't change much over time.
@@ -108,21 +108,17 @@ The state-level average proportion of “Very good” responses remained highest
 
 ```{r instacart_data_import}
 data("instacart")
-instacart = janitor::clean_names(instacart) ## clean variable names
+instacart = janitor::clean_names(instacart)
 skimr::skim(instacart)
 ```
 
-write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations.
+Write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations.
 
 The Instacart data has `r nrow(instacart)` observations and `r ncol(instacart)` variables. Variables for `aisle`, `department`, `eval_set` and `product_name` are class `character` and other variables are class `integer`. The dataset contains products of 39,123 different names bought from 134 different aisles within 21 departments. `r round(sum(instacart$reordered == 1)/nrow(instacart), digits = 2)` of all items ordered have been ordered by the user in the past. Among those items which have been ordered before, `r (instacart %>% filter(reordered == 1) %>% count(product_name) %>% top_n(1))[[1]]` is the most popular. Most orders were placed at $14\pm4.2$ hours of the day. 
 
-The distribution of orders placed at which day of the week are shown below. 
+The first observation is `r instacart$product_name[1]` (product id: `r instacart$product_id[1]`) bought from the `r instacart$aisle[1]` aisle (aisle id: `r instacart$aisle_id[1]`) of the `r instacart$department[1]` department (department id: `r instacart$department_id[1]`) by the user whose id is `r instacart$user_id[1]`. The order (order id: `r instacart$order_id[1]`) was placed at `r instacart$order_hour_of_day[1]` on Thursday. The order sequence number for this user is `r instacart$order_number[1]`. This product was the first product added to cart by this user and has been ordered  before. `r instacart$days_since_prior_order[1]` days has past since the last order placed by this user. The evaluation set this order belongs in is `r instacart$eval_set[1]`. 
 
-```{r order_placed_day}
-instacart %>% 
-  count(order_dow) %>% 
-  ggplot(aes(x = factor(order_dow), y = n)) + geom_bar(stat = "identity")
-```
+The ninth observation is `r instacart$product_name[9]` (product id: `r instacart$product_id[9]`) bought from the `r instacart$aisle[9]` aisle (aisle id: `r instacart$aisle_id[9]`) of the `r instacart$department[9]` department (department id: `r instacart$department_id[9]`) by the user whose id is `r instacart$user_id[9]`. The order (order id: `r instacart$order_id[9]`) was placed at `r instacart$order_hour_of_day[9]` on Saturday. The order sequence number for this user is `r instacart$order_number[9]`. This product was the first product added to cart by this user and hasn't been ordered  before. `r instacart$days_since_prior_order[9]` days has past since the last order placed by this user. The evaluation set this order belongs in is `r instacart$eval_set[9]`. 
 
 ## Calculate the number of aisles and find out the most frequent
 
@@ -139,66 +135,14 @@ There are 134 aisles. Fresh vegetables is the aisle which the most items ordered
 
 The code chunk below makes a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
 
-Solution a
-
 ```{r aisle_plot}
 instacart %>%
   count(aisle) %>%
-  pull(n) %>% 
-  quantile
-
-aisle_p1 = 
-  instacart %>%
-  count(aisle) %>%
-  filter(n %in% quantile(n, 0):quantile(n, 0.25)) %>% 
   ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
   geom_bar(stat = "identity") +
-  labs(x = "aisle", y = "number of items") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-
-aisle_p2 = 
-  instacart %>%
-  count(aisle) %>% 
-  filter(n %in% 1464:4723) %>% 
-  ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
-  geom_bar(stat = "identity") +
-  labs(x = "aisle", y = "number of items") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-aisle_p3 =
-  instacart %>%
-  count(aisle) %>%
-  filter(n %in% quantile(n, 0.5):quantile(n, 0.75)) %>% 
-  ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
-  geom_bar(stat = "identity") +
-  labs(x = "aisle", y = "number of items") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-aisle_p4 =
-  instacart %>%
-  count(aisle) %>%
-  filter(n %in% quantile(n, 0.75):quantile(n, 1)) %>% 
-  ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
-  geom_bar(stat = "identity") +
-  labs(x = "aisle", y = "number of items") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-aisle_p1/aisle_p2/aisle_p3/aisle_p4
-```
-
-Solution b
-
-```{r aisle_plot_2}
-instacart %>% 
-  count(aisle) %>% 
-  ggplot(aes(x = n)) +
-  geom_histogram() +
-  labs(x = "Number of items", y = "Number of aisles")
-
-instacart %>% 
-  count(aisle) %>% 
-  top_n(3)
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 8)) +
+  labs(x = "Aisle", y = "Number of items", 
+       title = "The number of items ordered in each aisle")
 ```
 
 The number of items ordered in most aisles are below 25,000, although in some aisles, like "fresh fruits" and "fresh vegetables", the number of items ordered are quite large, more than 150,000.
@@ -226,11 +170,18 @@ The code chunk below makes a table showing the mean hour of the day at which Pin
 
 ```{r mean_time}
 instacart %>% 
+  ## Convert order_dow from numeric to character
+  mutate(
+    order_dow = recode(order_dow, "0" = "Sunday", "1" = "Monday", "2" = "Tuesday", "3" = "Wednesday", "4" = "Thursday", "5" = "Friday", "6" = "Saturday")
+  ) %>%
+  mutate(
+    order_dow = factor(order_dow, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+  ) %>% 
   filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>%
   group_by(product_name, order_dow) %>% 
-  summarize(mean_time = round(mean(order_hour_of_day, na.rm = TRUE), digits = 1)) %>% 
+  summarize(mean_time = mean(order_hour_of_day, na.rm = TRUE)) %>% 
   spread(key = order_dow, value = mean_time) %>% 
-  knitr::kable()
+  knitr::kable(digits = 1)
 ```
 
 On most days of a week, the mean hour at which Pink Lady Apples is ordered is earlier than that and at which Coffee Ice Cream is ordered. 
@@ -243,11 +194,17 @@ On most days of a week, the mean hour at which Pink Lady Apples is ordered is ea
 data("ny_noaa")
 ny_noaa = janitor::clean_names(ny_noaa) ## clean variable names
 skimr::skim(ny_noaa)
+
+n_all_missing = ny_noaa %>% 
+  filter(is.na(tmax) & is.na(tmin) & is.na(prcp) & is.na(snow) & is.na(snwd)) %>% 
+  nrow()
 ```
 
 Write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue.
 
-The NY NOAA data has `r nrow(ny_noaa)` observations and `r ncol(ny_noaa)` variables. Variables for `id`, `tmax` and `tmin` are class `character`. Variables for `prcp`, `snow` and `snwd` are class `integer`. Variable for `date` is class `Date`. 
+The NY NOAA data has `r nrow(ny_noaa)` observations and `r ncol(ny_noaa)` variables. Variables for `id`, `tmax` and `tmin` are class `character`. Variables for `prcp`, `snow` and `snwd` are class `integer`. Variable for `date` is class `Date`. The medians of precipitation, snowfall and snow depth during the study period are all 0. The data was collected from 747 unique weather stations. 
+
+There are `r n_all_missing` obseravtions containing no information about temperature, precipitation, snowfall or snow depth, which is about `r round(n_all_missing/nrow(ny_noaa), digits = 2)` of all observaions. The proportion of missing data of `tmax` is `r round(sum(is.na(ny_noaa$tmax))/nrow(ny_noaa), digits = 2)`. The proportion of missing data of `tmin` is `r round(sum(is.na(ny_noaa$tmin))/nrow(ny_noaa), digits = 2)`. The proportion of missing data of `prcp` is `r round(sum(is.na(ny_noaa$prcp))/nrow(ny_noaa), digits = 2)`. The proportion of missing data of `snow` is `r round(sum(is.na(ny_noaa$snow))/nrow(ny_noaa), digits = 2)`. The proportion of missing data of `snwd` is `r round(sum(is.na(ny_noaa$snwd))/nrow(ny_noaa), digits = 2)`. In my opinion, if more than 1/5 of data are missiong, it would become an issue. And whether missing data is an issue also depends on whether the data is randomly missing or non-randomly. 
 
 ## Clean the NY NOAA data
 
@@ -275,14 +232,16 @@ The code chunk below makes a two-panel plot showing the average max temperature 
 ```{r tmax_jan_july}
 ny_noaa %>% 
   filter(month %in% c("01", "07")) %>% 
-  group_by(month, id, year) %>%
+  group_by(month, year, id) %>%
   summarize(tmax_mean = mean(tmax, na.rm = T)) %>%
-  ggplot(aes(x = year, y = tmax_mean, fill = year)) +
-  geom_violin() +
-  facet_grid(~month)
+  ggplot(aes(x = factor(year), y = tmax_mean)) +
+  geom_boxplot() +
+  facet_grid(~month) +
+  labs(x = "Year", y = "The average max temperature", 
+       title = "The average max temperature in January and in July in each station across years")
 ```
 
-
+The average max temperature in January and in July fluctuated a lot across years. In January, except in 1981, 1985, 1989, 1997 and 2006, all other years had outliers. In July, except in 1992, 1997, 1999, 2009 and 2010, all other years had outliers. 
 
 ## Make a two-panel plot
 
@@ -302,4 +261,4 @@ snowfall = ny_noaa %>%
 tmax_tmin + snowfall
 ```
 
-
+Tmin had the positive relationship with tmax. And The distribution of snowfall values greater than 0 and less than 100 remained almost the same across years. 
