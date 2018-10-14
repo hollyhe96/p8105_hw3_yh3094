@@ -97,6 +97,7 @@ brfss_data %>%
   facet_grid(~response) +
   geom_violin(aes(fill = factor(year))) +
   stat_summary(fun.y = median, geom = "point") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
   labs(x = "Year", y = "State-level averages", title = "The five-panel plot")
 ```
 
@@ -140,7 +141,7 @@ instacart %>%
   count(aisle) %>%
   ggplot(aes(x = forcats::fct_reorder(aisle, n), y = n)) +
   geom_bar(stat = "identity") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 8)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 8)) +
   labs(x = "Aisle", y = "Number of items", 
        title = "The number of items ordered in each aisle")
 ```
@@ -237,6 +238,7 @@ ny_noaa %>%
   ggplot(aes(x = factor(year), y = tmax_mean)) +
   geom_boxplot() +
   facet_grid(~month) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
   labs(x = "Year", y = "The average max temperature", 
        title = "The average max temperature in January and in July in each station across years")
 ```
@@ -250,13 +252,15 @@ The code chunk below makes a two-panel plot showing (i) tmax vs tmin for the ful
 ```{r tmax_tmin_snowfall}
 tmax_tmin = ny_noaa %>% 
   ggplot(aes(x = tmax, y = tmin)) +
-  geom_hex()
+  geom_hex() +
+  theme(legend.text = element_text(angle = 60, hjust = 1))
 
 snowfall = ny_noaa %>% 
   filter(snow > 0 & snow < 100) %>% 
   group_by(year) %>% 
   ggplot(aes(x = year, y = snow)) +
-  geom_boxplot()
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
 
 tmax_tmin + snowfall
 ```
